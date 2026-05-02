@@ -1,0 +1,19 @@
+{
+  "name": "pterodactyl-discord-bot",
+  "version": "1.0.0",
+  "description": "Discord bot for Pterodactyl Panel management",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "deploy-commands": "node src/deploy-commands.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.15.3",
+    "axios": "^1.7.7",
+    "dotenv": "^16.4.5",
+    "winston": "^3.14.2",
+    "ioredis": "^5.4.1"
+  }
+}

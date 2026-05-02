@@ -1,0 +1,120 @@
+version: '3.9'
+
+services:
+
+  # ── MySQL ────────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.2
+    container_name: pterobot-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE:      ${DB_NAME}
+      MYSQL_USER:          ${DB_USER}
+      MYSQL_PASSWORD:      ${DB_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./api/src/database/migrations/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    networks: [pterobot]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ────────────────────────────────────────────────────
+  redis:
+    image: redis:7.4-alpine
+    container_name: pterobot-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks: [pterobot]
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── API ──────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: pterobot-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST:    mysql
+      REDIS_HOST: redis
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      mysql: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [pterobot]
+    volumes:
+      - api_logs:/app/logs
+
+  # ── Queue Worker ─────────────────────────────────────────────
+  worker:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: pterobot-worker
+    restart: unless-stopped
+    command: ["node", "src/queue/worker.js"]
+    env_file: .env
+    environment:
+      DB_HOST:    mysql
+      REDIS_HOST: redis
+    depends_on:
+      mysql: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [pterobot]
+    volumes:
+      - api_logs:/app/logs
+
+  # ── Discord Bot ──────────────────────────────────────────────
+  bot:
+    build:
+      context: ./bot
+      dockerfile: Dockerfile
+    container_name: pterobot-bot
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      API_BASE_URL: http://api:3000
+      REDIS_HOST:   redis
+    depends_on:
+      - api
+      - redis
+    networks: [pterobot]
+    volumes:
+      - bot_logs:/app/logs
+
+  # ── Dashboard (production build served by nginx) ─────────────
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: pterobot-dashboard
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    networks: [pterobot]
+
+volumes:
+  mysql_data:
+  redis_data:
+  api_logs:
+  bot_logs:
+
+networks:
+  pterobot:
+    driver: bridge

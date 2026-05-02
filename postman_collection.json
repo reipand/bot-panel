@@ -1,0 +1,702 @@
+{
+  "info": {
+    "_postman_id": "pterobot-api-v1",
+    "name": "Pterodactyl Bot Panel API",
+    "description": "Koleksi lengkap API untuk Pterodactyl Discord Bot Panel.\n\n**Setup:**\n1. Set variable `baseUrl` ke `http://localhost:3000`\n2. Set variable `apiKey` ke nilai `API_SECRET_KEY` di `.env`\n3. Set variable `discordId` ke Discord User ID kamu\n\nSemua request ke `/api/*` otomatis menggunakan `X-API-Key` header dari variable `apiKey`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "apiKey",
+      "value": "your_api_secret_key_here",
+      "type": "string"
+    },
+    {
+      "key": "discordId",
+      "value": "123456789012345678",
+      "type": "string"
+    },
+    {
+      "key": "serverId",
+      "value": "a1b2c3d4",
+      "type": "string"
+    },
+    {
+      "key": "jobId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      {
+        "key": "key",
+        "value": "X-API-Key",
+        "type": "string"
+      },
+      {
+        "key": "value",
+        "value": "{{apiKey}}",
+        "type": "string"
+      },
+      {
+        "key": "in",
+        "value": "header",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Cek apakah API server berjalan normal. Tidak membutuhkan autentikasi."
+          },
+          "response": [
+            {
+              "name": "OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"status\": \"ok\",\n  \"uptime\": 3600.52\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Servers",
+      "item": [
+        {
+          "name": "Get Server Status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has server object', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('server');",
+                  "  pm.expect(json.server).to.have.property('status');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/servers/{{serverId}}/status?discord_id={{discordId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "servers", "{{serverId}}", "status"],
+              "query": [
+                {
+                  "key": "discord_id",
+                  "value": "{{discordId}}",
+                  "description": "Discord User ID pemilik server"
+                }
+              ]
+            },
+            "description": "Ambil status server beserta resource usage (CPU, RAM, Disk) secara real-time dari Pterodactyl."
+          },
+          "response": [
+            {
+              "name": "Success - Running",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"server\": {\n    \"id\": 1,\n    \"pterodactyl_server_id\": 10,\n    \"pterodactyl_server_uuid\": \"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\",\n    \"pterodactyl_identifier\": \"a1b2c3d4\",\n    \"owner_discord_id\": \"123456789012345678\",\n    \"name\": \"My Minecraft Server\",\n    \"type\": \"minecraft\",\n    \"status\": \"running\",\n    \"node_id\": 1,\n    \"last_seen_online\": \"2026-05-02T10:00:00.000Z\",\n    \"cpu\": \"45.2\",\n    \"memory_bytes\": 1073741824,\n    \"disk_bytes\": 2147483648,\n    \"created_at\": \"2026-05-01T08:00:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"message\": \"Server not found.\"\n}"
+            },
+            {
+              "name": "Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"message\": \"You do not own this server.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Start Server",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has message', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.message).to.include('starting');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"discord_id\": \"{{discordId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/servers/{{serverId}}/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "servers", "{{serverId}}", "start"]
+            },
+            "description": "Kirim sinyal `start` ke server. Hanya pemilik server atau admin yang bisa melakukan ini."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"message\": \"Server is starting.\"\n}"
+            },
+            {
+              "name": "Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"message\": \"You do not own this server.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Stop Server",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"discord_id\": \"{{discordId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/servers/{{serverId}}/stop",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "servers", "{{serverId}}", "stop"]
+            },
+            "description": "Kirim sinyal `stop` ke server (graceful shutdown)."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"message\": \"Server is stopping.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Restart Server",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"discord_id\": \"{{discordId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/servers/{{serverId}}/restart",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "servers", "{{serverId}}", "restart"]
+            },
+            "description": "Restart server (stop + start)."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"message\": \"Server is restarting.\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get User Info",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has user object', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('user');",
+                  "  pm.expect(json.user).to.have.property('discord_id');",
+                  "  pm.expect(json.user).to.have.property('role');",
+                  "  pm.expect(json.user).to.have.property('server_limit');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{discordId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "{{discordId}}"]
+            },
+            "description": "Ambil informasi user berdasarkan Discord ID. Jika user belum ada di database, otomatis dibuat dengan role `user` dan limit 1 server."
+          },
+          "response": [
+            {
+              "name": "Success - Linked",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"user\": {\n    \"id\": 1,\n    \"discord_id\": \"123456789012345678\",\n    \"pterodactyl_user_id\": 5,\n    \"pterodactyl_username\": \"johndoe\",\n    \"pterodactyl_email\": \"john@example.com\",\n    \"role\": \"user\",\n    \"server_limit\": 1,\n    \"server_count\": 0,\n    \"created_at\": \"2026-05-02T10:00:00.000Z\",\n    \"updated_at\": \"2026-05-02T10:00:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "Success - Not Linked Yet",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"user\": {\n    \"id\": 2,\n    \"discord_id\": \"987654321098765432\",\n    \"pterodactyl_user_id\": null,\n    \"pterodactyl_username\": null,\n    \"pterodactyl_email\": null,\n    \"role\": \"user\",\n    \"server_limit\": 1,\n    \"server_count\": 0,\n    \"created_at\": \"2026-05-02T10:00:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Link Pterodactyl Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('User is linked', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.user).to.have.property('pterodactyl_username');",
+                  "  pm.expect(json.user.pterodactyl_username).to.not.be.null;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"discord_id\": \"{{discordId}}\",\n  \"email\": \"john@example.com\",\n  \"api_key\": \"ptlc_userClientApiKeyHere\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/link",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "link"]
+            },
+            "description": "Hubungkan Discord ID dengan akun Pterodactyl. API akan memverifikasi email ke Pterodactyl Application API.\n\n⚠️ Di Discord, command `/link` bersifat ephemeral (hanya terlihat oleh user sendiri) untuk keamanan."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"user\": {\n    \"discord_id\": \"123456789012345678\",\n    \"pterodactyl_user_id\": 5,\n    \"pterodactyl_username\": \"johndoe\",\n    \"pterodactyl_email\": \"john@example.com\",\n    \"role\": \"user\",\n    \"server_limit\": 1\n  }\n}"
+            },
+            {
+              "name": "Not Found - Email Not in Pterodactyl",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"message\": \"Pterodactyl account not found for that email.\"\n}"
+            },
+            {
+              "name": "Bad Request - Missing Fields",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"message\": \"discord_id, email, and api_key are required.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get User's Servers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has servers array', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('servers');",
+                  "  pm.expect(json.servers).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{discordId}}/servers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "{{discordId}}", "servers"]
+            },
+            "description": "Ambil semua server milik user beserta resource usage terkini (CPU, RAM, Disk) dari Pterodactyl Client API."
+          },
+          "response": [
+            {
+              "name": "Success - With Servers",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"servers\": [\n    {\n      \"id\": 1,\n      \"pterodactyl_server_id\": 10,\n      \"pterodactyl_server_uuid\": \"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\",\n      \"pterodactyl_identifier\": \"a1b2c3d4\",\n      \"owner_discord_id\": \"123456789012345678\",\n      \"name\": \"My Minecraft Server\",\n      \"type\": \"minecraft\",\n      \"status\": \"running\",\n      \"node_id\": 1,\n      \"cpu\": \"12.5\",\n      \"memory_bytes\": 1073741824,\n      \"disk_bytes\": 2147483648,\n      \"created_at\": \"2026-05-01T08:00:00.000Z\"\n    },\n    {\n      \"id\": 2,\n      \"pterodactyl_identifier\": \"e5f6g7h8\",\n      \"name\": \"Rust Server\",\n      \"type\": \"rust\",\n      \"status\": \"offline\",\n      \"cpu\": null,\n      \"memory_bytes\": null,\n      \"disk_bytes\": null\n    }\n  ]\n}"
+            },
+            {
+              "name": "Success - No Servers",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"servers\": []\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Deploy",
+      "item": [
+        {
+          "name": "Queue Deploy - Minecraft",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 202', () => pm.response.to.have.status(202));",
+                  "pm.test('Has job_id', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('job_id');",
+                  "  pm.expect(json).to.have.property('estimated_seconds');",
+                  "  // Simpan job_id ke variable untuk request selanjutnya",
+                  "  pm.collectionVariables.set('jobId', json.job_id);",
+                  "  console.log('Job ID saved:', json.job_id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"discord_id\": \"{{discordId}}\",\n  \"type\": \"minecraft\",\n  \"name\": \"my-mc-server\",\n  \"version\": \"latest\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/deploy",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "deploy"]
+            },
+            "description": "Queue deployment server Minecraft baru.\n\n**Field `type`:** `minecraft` | `rust` | `terraria`\n**Field `name`:** Hanya alphanumeric, `_`, `-`, max 32 karakter\n**Field `version`:** `latest`, `1.20.4`, `1.19.4`, `1.18.2` (Minecraft only)\n\nSetelah request ini, gunakan `job_id` yang dikembalikan untuk polling status via `GET /api/deploy/status/:job_id`.\n\n> Test script otomatis menyimpan `job_id` ke collection variable `jobId`."
+          },
+          "response": [
+            {
+              "name": "Queued",
+              "status": "Accepted",
+              "code": 202,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"job_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"estimated_seconds\": 45\n}"
+            },
+            {
+              "name": "Forbidden - Limit Reached",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"message\": \"Server limit reached (1/1).\"\n}"
+            },
+            {
+              "name": "Forbidden - Not Linked",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"message\": \"Account not linked. Use /link first.\"\n}"
+            },
+            {
+              "name": "Bad Request - Invalid Name",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"message\": \"Invalid server name. Use letters, numbers, _ and - only.\"\n}"
+            },
+            {
+              "name": "Bad Request - Unsupported Type",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"message\": \"Unsupported type. Supported: minecraft, rust, terraria\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Queue Deploy - Rust",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"discord_id\": \"{{discordId}}\",\n  \"type\": \"rust\",\n  \"name\": \"my-rust-server\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/deploy",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "deploy"]
+            },
+            "description": "Queue deployment server Rust baru. Memory default 4096 MB, CPU 200%."
+          },
+          "response": [
+            {
+              "name": "Queued",
+              "status": "Accepted",
+              "code": 202,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"job_id\": \"660e8400-e29b-41d4-a716-446655440000\",\n  \"estimated_seconds\": 90\n}"
+            }
+          ]
+        },
+        {
+          "name": "Queue Deploy - Terraria",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"discord_id\": \"{{discordId}}\",\n  \"type\": \"terraria\",\n  \"name\": \"my-terraria-world\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/deploy",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "deploy"]
+            },
+            "description": "Queue deployment server Terraria baru."
+          },
+          "response": [
+            {
+              "name": "Queued",
+              "status": "Accepted",
+              "code": 202,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"job_id\": \"770e8400-e29b-41d4-a716-446655440000\",\n  \"estimated_seconds\": 30\n}"
+            }
+          ]
+        },
+        {
+          "name": "Check Deploy Status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has job object', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('job');",
+                  "  pm.expect(json.job).to.have.property('status');",
+                  "  const validStatuses = ['pending', 'processing', 'completed', 'failed'];",
+                  "  pm.expect(validStatuses).to.include(json.job.status);",
+                  "});",
+                  "",
+                  "// Jika completed, tampilkan info server",
+                  "const json = pm.response.json();",
+                  "if (json.job?.status === 'completed' && json.job?.result) {",
+                  "  console.log('Server ready!');",
+                  "  console.log('Panel URL:', json.job.result.panel_url);",
+                  "  console.log('IP:Port:', json.job.result.ip + ':' + json.job.result.port);",
+                  "  pm.collectionVariables.set('serverId', json.job.result.identifier);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/deploy/status/{{jobId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "deploy", "status", "{{jobId}}"]
+            },
+            "description": "Polling status deploy job. Gunakan `job_id` dari response `POST /api/deploy`.\n\nStatus yang mungkin:\n- `pending` — Masih antri di queue\n- `processing` — Sedang diproses worker\n- `completed` — Server berhasil dibuat, `result` berisi kredensial\n- `failed` — Gagal, cek `error_message`\n\n> Test script otomatis menyimpan `identifier` ke collection variable `serverId` jika deploy berhasil."
+          },
+          "response": [
+            {
+              "name": "Pending",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"job\": {\n    \"job_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"discord_id\": \"123456789012345678\",\n    \"server_type\": \"minecraft\",\n    \"server_name\": \"my-mc-server\",\n    \"version\": \"latest\",\n    \"status\": \"pending\",\n    \"error_message\": null,\n    \"result\": null,\n    \"created_at\": \"2026-05-02T10:00:00.000Z\",\n    \"updated_at\": \"2026-05-02T10:00:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "Processing",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"job\": {\n    \"job_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"status\": \"processing\",\n    \"error_message\": null,\n    \"result\": null\n  }\n}"
+            },
+            {
+              "name": "Completed",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"job\": {\n    \"job_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"server_type\": \"minecraft\",\n    \"server_name\": \"my-mc-server\",\n    \"status\": \"completed\",\n    \"error_message\": null,\n    \"result\": {\n      \"name\": \"my-mc-server\",\n      \"identifier\": \"a1b2c3d4\",\n      \"uuid\": \"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\",\n      \"panel_url\": \"https://panel.domain.com/server/a1b2c3d4\",\n      \"ip\": \"192.168.1.10\",\n      \"port\": 25565,\n      \"username\": \"johndoe\",\n      \"password\": \"(use Pterodactyl panel password)\"\n    },\n    \"created_at\": \"2026-05-02T10:00:00.000Z\",\n    \"updated_at\": \"2026-05-02T10:00:45.000Z\"\n  }\n}"
+            },
+            {
+              "name": "Failed",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"job\": {\n    \"job_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"status\": \"failed\",\n    \"error_message\": \"No available allocations. Contact an administrator.\",\n    \"result\": null\n  }\n}"
+            },
+            {
+              "name": "Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"message\": \"Job not found.\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Error Responses",
+      "item": [
+        {
+          "name": "Unauthorized (missing API key)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{discordId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "{{discordId}}"]
+            },
+            "description": "Contoh response ketika X-API-Key header tidak disertakan atau salah."
+          },
+          "response": [
+            {
+              "name": "Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"message\": \"Unauthorized\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Not Found Route",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/invalid-endpoint",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invalid-endpoint"]
+            },
+            "description": "Contoh response untuk endpoint yang tidak ada."
+          },
+          "response": [
+            {
+              "name": "Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"message\": \"Not found.\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
